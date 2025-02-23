@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,10 @@ import (
 
 	"github.com/go-redis/redis"
 	_ "github.com/lib/pq"
+)
+
+const (
+	ENV_VARIABLE = "environment variables cannot be empty"
 )
 
 func Liveness(w http.ResponseWriter, r *http.Request) {
@@ -23,21 +28,32 @@ func Readiness(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	opt, _ := redis.ParseURL("rediss://default:AUidAAIjcDE0NTg5NTY3MzJiOTg0YTcxOWE2YzI2MDBkYTU5NDQxY3AxMA@stirring-gar-18589.upstash.io:6379")
-	client := redis.NewClient(opt)
+	rd_endpoint := os.Getenv("REDIS_ENDPOINT")
+	rd_password := os.Getenv("REDIS_PASSWORD")
+	rd_PORT := os.Getenv("REDIS_PORT")
+	if rd_endpoint == "" || rd_password == "" || rd_PORT == "" {
+		log.Fatal(errors.New(ENV_VARIABLE))
+	}
+	db_role := os.Getenv("DB_ROLE")
+	db_password := os.Getenv("DB_PASSWORD")
+	db_hostname := os.Getenv("DB_HOSTNAME")
+	db_name := os.Getenv("DB_DATABASE_NAME")
+	if db_role == "" || db_password == "" || db_hostname == "" || db_name == "" {
+		log.Fatal(errors.New(ENV_VARIABLE))
+	}
 
+	rd_url := fmt.Sprintf("rediss://default:%s@%s:%s", rd_endpoint, rd_password, rd_PORT)
+	opt, _ := redis.ParseURL(rd_url)
+	client := redis.NewClient(opt)
 	val := client.Get("key1").Val()
 	print(val)
 
-	connStr := "user='koyeb-adm' password=npg_0XkYaq9BCONs host=ep-icy-river-a2npoafz.eu-central-1.pg.koyeb.app dbname='koyebdb'"
-	db, err := sql.Open("postgres", connStr)
+	db_url := fmt.Sprintf("user='%s' password=%s host=%s dbname='%s'", db_role, db_password, db_hostname, db_name)
+	db, err := sql.Open("postgres", db_url)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
-	}
-	if _, err := db.ExecContext(context.Background(), "INSERT INTO users (ID, NAME) VALUES ($1, $2)", 1, "user1"); err != nil {
 		log.Fatal(err)
 	}
 	rows, err := db.QueryContext(context.Background(), "SELECT ID, NAME FROM users")

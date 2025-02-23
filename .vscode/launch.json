@@ -6,7 +6,7 @@
             "request": "launch",
             "type": "go",
             "mode": "auto",
-            "program": "${workspaceFolder}/main.go",
+            "program": "${workspaceFolder}/hello.go",
             "env": {},
             "args": []
         }
